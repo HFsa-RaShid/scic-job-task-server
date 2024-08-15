@@ -45,11 +45,12 @@ async function run() {
         res.send(result);
       });
 
+
+    //   all users
       app.get('/users', async (req, res) => {
       
         const users = await userCollection.find().toArray();
         res.send(users);
-      
     });
 
     // app.get('/products', async (req, res) => {
@@ -58,8 +59,6 @@ async function run() {
     //     res.send(users);
       
     // });
-
-    
 
 
     app.get('/products', async (req, res) => {
