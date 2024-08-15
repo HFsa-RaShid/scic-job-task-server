@@ -58,42 +58,80 @@ async function run() {
     //     res.send(users);
       
     // });
+
+    // app.get('/products', async (req, res) => {
+    //     const page = parseInt(req.query.page) || 1;
+    //     const limit = parseInt(req.query.limit) || 10;
     
+    //     const startIndex = (page - 1) * limit;
+    //     const total = await productCollection.countDocuments();
+    //     const products = await productCollection.find().limit(limit).skip(startIndex).toArray();
+    
+    //     const results = {
+    //         total,
+    //         page,
+    //         limit,
+    //         results: products
+    //     };
+    
+    //     if (startIndex + limit < total) {
+    //         results.next = {
+    //             page: page + 1,
+    //             limit: limit
+    //         };
+    //     }
+    
+    //     if (startIndex > 0) {
+    //         results.previous = {
+    //             page: page - 1,
+    //             limit: limit
+    //         };
+    //     }
+    
+    //     res.json(results);
+    // });
+    
+
+
     app.get('/products', async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
+        const sortField = req.query.sortField || 'creationDate';
+        const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
     
         const startIndex = (page - 1) * limit;
         const total = await productCollection.countDocuments();
-        const products = await productCollection.find().limit(limit).skip(startIndex).toArray();
+        const products = await productCollection.find()
+            .sort({ [sortField]: sortOrder })
+            .limit(limit)
+            .skip(startIndex)
+            .toArray();
     
         const results = {
             total,
             page,
             limit,
-            results: products
+            results: products,
         };
     
         if (startIndex + limit < total) {
             results.next = {
                 page: page + 1,
-                limit: limit
+                limit: limit,
             };
         }
     
         if (startIndex > 0) {
             results.previous = {
                 page: page - 1,
-                limit: limit
+                limit: limit,
             };
         }
     
         res.json(results);
     });
     
-
-
-
+    
 
 
 
