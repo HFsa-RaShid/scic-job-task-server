@@ -52,12 +52,45 @@ async function run() {
       
     });
 
+    // app.get('/products', async (req, res) => {
+      
+    //     const users = await productCollection.find().toArray();
+    //     res.send(users);
+      
+    // });
+    
     app.get('/products', async (req, res) => {
-      
-        const users = await productCollection.find().toArray();
-        res.send(users);
-      
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+    
+        const startIndex = (page - 1) * limit;
+        const total = await productCollection.countDocuments();
+        const products = await productCollection.find().limit(limit).skip(startIndex).toArray();
+    
+        const results = {
+            total,
+            page,
+            limit,
+            results: products
+        };
+    
+        if (startIndex + limit < total) {
+            results.next = {
+                page: page + 1,
+                limit: limit
+            };
+        }
+    
+        if (startIndex > 0) {
+            results.previous = {
+                page: page - 1,
+                limit: limit
+            };
+        }
+    
+        res.json(results);
     });
+    
 
 
 
