@@ -59,37 +59,6 @@ async function run() {
       
     // });
 
-    // app.get('/products', async (req, res) => {
-    //     const page = parseInt(req.query.page) || 1;
-    //     const limit = parseInt(req.query.limit) || 10;
-    
-    //     const startIndex = (page - 1) * limit;
-    //     const total = await productCollection.countDocuments();
-    //     const products = await productCollection.find().limit(limit).skip(startIndex).toArray();
-    
-    //     const results = {
-    //         total,
-    //         page,
-    //         limit,
-    //         results: products
-    //     };
-    
-    //     if (startIndex + limit < total) {
-    //         results.next = {
-    //             page: page + 1,
-    //             limit: limit
-    //         };
-    //     }
-    
-    //     if (startIndex > 0) {
-    //         results.previous = {
-    //             page: page - 1,
-    //             limit: limit
-    //         };
-    //     }
-    
-    //     res.json(results);
-    // });
     
 
 
@@ -98,10 +67,16 @@ async function run() {
         const limit = parseInt(req.query.limit) || 10;
         const sortField = req.query.sortField || 'creationDate';
         const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+        const searchQuery = req.query.search || ''; 
     
         const startIndex = (page - 1) * limit;
-        const total = await productCollection.countDocuments();
-        const products = await productCollection.find()
+    
+   
+        const searchFilter = searchQuery ? { productName: { $regex: searchQuery, $options: 'i' } } : {};
+        console.log(searchFilter);
+        const total = await productCollection.countDocuments(searchFilter);
+        console.log(total);
+        const products = await productCollection.find(searchFilter)
             .sort({ [sortField]: sortOrder })
             .limit(limit)
             .skip(startIndex)
@@ -130,6 +105,9 @@ async function run() {
     
         res.json(results);
     });
+    
+    
+    
     
     
 
