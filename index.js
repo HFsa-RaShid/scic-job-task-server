@@ -61,50 +61,69 @@ async function run() {
     // });
 
 
+    
     app.get('/products', async (req, res) => {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const sortField = req.query.sortField || 'creationDate';
-        const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-        const searchQuery = req.query.search || ''; 
-    
-        const startIndex = (page - 1) * limit;
-    
-   
-        const searchFilter = searchQuery ? { productName: { $regex: searchQuery, $options: 'i' } } : {};
-        console.log(searchFilter);
-        const total = await productCollection.countDocuments(searchFilter);
-        console.log(total);
-        const products = await productCollection.find(searchFilter)
-            .sort({ [sortField]: sortOrder })
-            .limit(limit)
-            .skip(startIndex)
-            .toArray();
-    
-        const results = {
-            total,
-            page,
-            limit,
-            results: products,
-        };
-    
-        if (startIndex + limit < total) {
-            results.next = {
-                page: page + 1,
-                limit: limit,
-            };
-        }
-    
-        if (startIndex > 0) {
-            results.previous = {
-                page: page - 1,
-                limit: limit,
-            };
-        }
-    
-        res.json(results);
-    });
-    
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const sortField = req.query.sortField || 'creationDate';
+      const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+      const searchQuery = req.query.search || '';
+      const selectedBrand = req.query.brand || '';
+      const selectedCategory = req.query.category || '';
+      const minPrice = parseInt(req.query.minPrice) || 0;
+      const maxPrice = parseInt(req.query.maxPrice) || Infinity;
+  
+      const startIndex = (page - 1) * limit;
+  
+      const filters = {};
+  
+      if (searchQuery) {
+          filters.productName = { $regex: searchQuery, $options: 'i' };
+      }
+      
+      if (selectedBrand) {
+          filters.brand = selectedBrand;
+      }
+  
+      if (selectedCategory) {
+          filters.category = selectedCategory;
+      }
+  
+      if (minPrice || maxPrice < Infinity) {
+          filters.price = { $gte: minPrice, $lte: maxPrice };
+      }
+  
+      const total = await productCollection.countDocuments(filters);
+      const products = await productCollection.find(filters)
+          .sort({ [sortField]: sortOrder })
+          .limit(limit)
+          .skip(startIndex)
+          .toArray();
+  
+      const results = {
+          total,
+          page,
+          limit,
+          results: products,
+      };
+  
+      if (startIndex + limit < total) {
+          results.next = {
+              page: page + 1,
+              limit: limit,
+          };
+      }
+  
+      if (startIndex > 0) {
+          results.previous = {
+              page: page - 1,
+              limit: limit,
+          };
+      }
+  
+      res.json(results);
+  });
+  
     
     
     
