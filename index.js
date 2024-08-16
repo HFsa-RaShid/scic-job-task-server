@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 const app = express();
@@ -8,6 +9,7 @@ const port = process.env.PORT || 5000;
 // MiddleWare
 app.use(cors());
 app.use(express.json());
+
 
 
 
@@ -32,6 +34,30 @@ async function run() {
     const userCollection = client.db("new-jobtask").collection("users");
     const productCollection = client.db("new-jobtask").collection("products");
 
+     // auth related api
+     app.post('/jwt', async(req,res) =>{
+      const user = req.body;
+      // console.log('user for token', user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'});
+      res.send({token})
+    })
+
+    const verifyToken = (req, res, next) =>{
+      // console.log('inside verifyToken', req.headers.authorization);
+      // next();
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'unauthorized access'});
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded ) =>{
+        if(err){
+          return res.status(401).send({message: 'unauthorized access'});
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+
 
 
     app.post('/users', async (req, res) => {
@@ -47,7 +73,7 @@ async function run() {
 
 
     //   all users
-      app.get('/users', async (req, res) => {
+      app.get('/users',verifyToken, async (req, res) => {
       
         const users = await userCollection.find().toArray();
         res.send(users);
@@ -60,83 +86,71 @@ async function run() {
       
     // });
 
-
+  
     
-    app.get('/products', async (req, res) => {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
-      const sortField = req.query.sortField || 'creationDate';
-      const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-      const searchQuery = req.query.search || '';
-      const selectedBrand = req.query.brand || '';
-      const selectedCategory = req.query.category || '';
-      const minPrice = parseInt(req.query.minPrice) || 0;
-      const maxPrice = parseInt(req.query.maxPrice) || Infinity;
+    
+   
+  app.get('/products', async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const sortField = req.query.sortField || 'creationDate';
+  const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+  const searchQuery = req.query.search || '';
+  const selectedBrand = req.query.brand || '';
+  const selectedCategory = req.query.category || '';
+  const minPrice = parseInt(req.query.minPrice) || 0; 
+  const maxPrice = parseInt(req.query.maxPrice) || Infinity;
+
+  const startIndex = (page - 1) * limit;
+
+  const filters = {};
+
+  if (searchQuery) {
+      filters.productName = { $regex: searchQuery, $options: 'i' };
+  }
   
-      const startIndex = (page - 1) * limit;
-  
-      const filters = {};
-  
-      if (searchQuery) {
-          filters.productName = { $regex: searchQuery, $options: 'i' };
-      }
-      
-      if (selectedBrand) {
-          filters.brand = selectedBrand;
-      }
-  
-      if (selectedCategory) {
-          filters.category = selectedCategory;
-      }
-  
-      if (minPrice || maxPrice < Infinity) {
-          filters.price = { $gte: minPrice, $lte: maxPrice };
-      }
-  
-      const total = await productCollection.countDocuments(filters);
-      const products = await productCollection.find(filters)
-          .sort({ [sortField]: sortOrder })
-          .limit(limit)
-          .skip(startIndex)
-          .toArray();
-  
-      const results = {
-          total,
-          page,
-          limit,
-          results: products,
+  if (selectedBrand) {
+      filters.brand = selectedBrand;
+  }
+
+  if (selectedCategory) {
+      filters.category = selectedCategory;
+  }
+
+  if (minPrice !== 0 || maxPrice !== Infinity) {
+      filters.price = { $gte: minPrice, $lte: maxPrice };
+  }
+
+  const total = await productCollection.countDocuments(filters);
+  const products = await productCollection.find(filters)
+      .sort({ [sortField]: sortOrder })
+      .limit(limit)
+      .skip(startIndex)
+      .toArray();
+
+  const results = {
+      total,
+      page,
+      limit,
+      results: products,
+  };
+
+  if (startIndex + limit < total) {
+      results.next = {
+          page: page + 1,
+          limit: limit,
       };
-  
-      if (startIndex + limit < total) {
-          results.next = {
-              page: page + 1,
-              limit: limit,
-          };
-      }
-  
-      if (startIndex > 0) {
-          results.previous = {
-              page: page - 1,
-              limit: limit,
-          };
-      }
-  
-      res.json(results);
-  });
-  
-    
-    
-    
-    
+  }
 
+  if (startIndex > 0) {
+      results.previous = {
+          page: page - 1,
+          limit: limit,
+      };
+  }
 
-
-
-
-
-
-
-
+  res.json(results);
+});
 
 
 
